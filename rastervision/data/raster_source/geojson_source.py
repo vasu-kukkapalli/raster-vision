@@ -7,6 +7,7 @@ import shapely
 from rastervision.data.raster_source import RasterSource
 from rastervision.utils.files import file_to_str
 from rastervision.data.utils import geojson_to_shapes
+from rastervision.data.vector_source.utils import mbtiles_to_geojson
 
 
 def geojson_to_raster(geojson, rasterizer_options, extent, crs_transformer):
@@ -49,7 +50,16 @@ class GeoJSONSource(RasterSource):
         self.rasterizer_options = rasterizer_options
         self.extent = extent
         self.crs_transformer = crs_transformer
-        geojson = json.loads(file_to_str(self.uri))
+
+        # TODO: refactor anything that currently takes a GeoJSON URI to take a
+        # VectorSource (which can be VectorTileSource or GeoJSONSource)
+        if self.uri.endswith('.geojson') or self.uri.endswith('.json'):
+            geojson = json.loads(file_to_str(self.uri))
+        elif self.uri.endswith('.mbtiles'):
+            geojson = mbtiles_to_geojson(self.uri, extent, crs_transformer)
+        else:
+            raise ValueError('Format not valid')
+
         self.raster = geojson_to_raster(geojson, rasterizer_options, extent,
                                         crs_transformer)
         # Add third singleton dim since rasters must have >=1 channel.
